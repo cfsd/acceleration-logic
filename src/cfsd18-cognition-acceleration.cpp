@@ -44,13 +44,18 @@ int32_t main(int32_t argc, char **argv) {
     float Ki = (commandlineArguments.count("Ki")>0)?(static_cast<float>(std::stof(commandlineArguments["Ki"]))):(0.0f);
     float targetSpeed = (commandlineArguments.count("targetSpeed")>0)?(static_cast<float>(std::stof(commandlineArguments["targetSpeed"]))):(10.0f);
     float accelerationLimit = (commandlineArguments.count("accLimit")>0)?(static_cast<float>(std::stof(commandlineArguments["accLimit"]))):(10.0f);
+    float maxAmpSteer = (commandlineArguments.count("maxAmpSteer")>0)?(static_cast<float>(std::stof(commandlineArguments["maxAmpSteer"]))):(3.0f);
 
     // Interface to a running OpenDaVINCI session
+    std::cout << "Acceleration id: " << id << std::endl;
+
+
     cluon::OD4Session od4{static_cast<uint16_t>(std::stoi(commandlineArguments["cid"]))};
     cluon::OD4Session od4_WheelSpeed{static_cast<uint16_t>(std::stoi(commandlineArguments["cidWheelSpeed"]))};
 
 
-    Acceleration acceleration(od4, Kp, Ki, targetSpeed, accelerationLimit);
+
+    Acceleration acceleration(od4, Kp, Ki, targetSpeed, accelerationLimit, maxAmpSteer);
     int gatheringTimeMs = (commandlineArguments.count("gatheringTimeMs")>0)?(std::stoi(commandlineArguments["gatheringTimeMs"])):(50);
     int separationTimeMs = (commandlineArguments.count("separationTimeMs")>0)?(std::stoi(commandlineArguments["separationTimeMs"])):(10);
 

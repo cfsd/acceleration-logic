@@ -29,7 +29,7 @@
 
 class Acceleration {
  public:
-  Acceleration(cluon::OD4Session &, float, float, float, float);
+  Acceleration(cluon::OD4Session &, float, float, float, float, float);
   virtual ~Acceleration();
   void nextContainer(cluon::data::Envelope &);
   void receiveCombinedMessage(std::map<int,opendlv::logic::perception::GroundSurfaceArea>, cluon::data::TimeStamp);
@@ -57,6 +57,7 @@ class Acceleration {
    std::mutex m_od4Mutex;
    float m_targetSpeed;
    float m_accelerationLimit;
+   float m_maxAmpSteer;
 
 };
 

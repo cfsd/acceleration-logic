@@ -22,7 +22,7 @@
 #include "acceleration.hpp"
 #include <chrono>
 
-Acceleration::Acceleration(cluon::OD4Session &od4, float Kp,  float Ki, float targetSpeed, float accelerationLimit) :
+Acceleration::Acceleration(cluon::OD4Session &od4, float Kp,  float Ki, float targetSpeed, float accelerationLimit, float maxAmpSteer) :
  m_od4(od4)
  , m_steerError(0.0f)
  , m_speedError(0.0f)
@@ -37,6 +37,7 @@ Acceleration::Acceleration(cluon::OD4Session &od4, float Kp,  float Ki, float ta
  , m_od4Mutex()
  , m_targetSpeed(targetSpeed)
  , m_accelerationLimit(accelerationLimit)
+ , m_maxAmpSteer(maxAmpSteer)
 {
  setUp();
 }
@@ -130,8 +131,11 @@ void Acceleration::closestPoint(Eigen::RowVectorXf C, cluon::data::TimeStamp sam
     }
   }
 
-  float steeringAngle = m_Kp*d + m_Ki*m_steerError;
+  float maxAmpSteer = static_cast<float>(m_maxAmpSteer*3.14/180);
 
+  float steeringAngle = m_Kp*d + m_Ki*m_steerError;
+  steeringAngle = (steeringAngle > maxAmpSteer) ? maxAmpSteer : steeringAngle;
+  steeringAngle = (steeringAngle < -maxAmpSteer) ? -maxAmpSteer : steeringAngle;
 
   m_lastSteerRequest = cluon::time::now();
 
@@ -151,9 +155,11 @@ void Acceleration::speedControl() {
   if (speedErr > -3 && speedErr < 3) {
     float dt = static_cast<float>( (cluon::time::toMicroseconds(cluon::time::now()) - cluon::time::toMicroseconds(m_lastSpeedRead))*1e-6 );
     m_speedError += speedErr*dt;
+    m_speedError = (m_speedError > 10) ? 10:m_speedError;
+    m_speedError = (m_speedError < -10) ? -10 : m_speedError;
   }
 
-  float accelerationRequest = speedErr + m_speedError*0.01f;
+  float accelerationRequest = speedErr + m_speedError*0.1f;
 
   accelerationRequest = std::min(std::max(accelerationRequest,-m_accelerationLimit),m_accelerationLimit);
   cluon::data::TimeStamp sampleTime = cluon::time::now();
