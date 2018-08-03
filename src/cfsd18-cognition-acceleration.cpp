@@ -43,6 +43,8 @@ int32_t main(int32_t argc, char **argv) {
 
     // Interface to a running OpenDaVINCI session
     cluon::OD4Session od4{static_cast<uint16_t>(std::stoi(commandlineArguments["cid"]))};
+    cluon::OD4Session od4_WheelSpeed{static_cast<uint16_t>(std::stoi(commandlineArguments["cidWheelSpeed"]))};
+
 
     Acceleration acceleration(od4);
     int gatheringTimeMs = (commandlineArguments.count("gatheringTimeMs")>0)?(std::stoi(commandlineArguments["gatheringTimeMs"])):(50);
@@ -67,7 +69,7 @@ int32_t main(int32_t argc, char **argv) {
 
     od4.dataTrigger(opendlv::logic::perception::GroundSurfaceArea::ID(),surfaceEnvelope);
     od4.dataTrigger(opendlv::logic::perception::GroundSurfaceProperty::ID(),nextEnvelope);
-    od4.dataTrigger(opendlv::proxy::GroundSpeedReading::ID(),nextEnvelope);
+    od4od4_WheelSpeed.dataTrigger(opendlv::proxy::GroundSpeedReading::ID(),nextEnvelope);
 
 
     // Just sleep as this microservice is data driven.
