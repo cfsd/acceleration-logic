@@ -40,13 +40,17 @@ int32_t main(int32_t argc, char **argv) {
     uint32_t const speedId1=(commandlineArguments["speedId1"].size() != 0) ? static_cast<uint32_t>(std::stoi(commandlineArguments["speedId1"])) : (0);
     uint32_t const speedId2=(commandlineArguments["speedId2"].size() != 0) ? static_cast<uint32_t>(std::stoi(commandlineArguments["speedId2"])) : (0);
     uint32_t id = (commandlineArguments.count("id")>0)?(static_cast<uint32_t>(std::stoi(commandlineArguments["id"]))):(221);
+    float Kp = (commandlineArguments.count("Kp")>0)?(static_cast<float>(std::stof(commandlineArguments["Kp"]))):(0.0349f);
+    float Ki = (commandlineArguments.count("Ki")>0)?(static_cast<float>(std::stof(commandlineArguments["Ki"]))):(0.0f);
+    float targetSpeed = (commandlineArguments.count("targetSpeed")>0)?(static_cast<float>(std::stof(commandlineArguments["targetSpeed"]))):(10.0f);
+    float accelerationLimit = (commandlineArguments.count("accLimit")>0)?(static_cast<float>(std::stof(commandlineArguments["accLimit"]))):(10.0f);
 
     // Interface to a running OpenDaVINCI session
     cluon::OD4Session od4{static_cast<uint16_t>(std::stoi(commandlineArguments["cid"]))};
     cluon::OD4Session od4_WheelSpeed{static_cast<uint16_t>(std::stoi(commandlineArguments["cidWheelSpeed"]))};
 
 
-    Acceleration acceleration(od4);
+    Acceleration acceleration(od4, Kp, Ki, targetSpeed, accelerationLimit);
     int gatheringTimeMs = (commandlineArguments.count("gatheringTimeMs")>0)?(std::stoi(commandlineArguments["gatheringTimeMs"])):(50);
     int separationTimeMs = (commandlineArguments.count("separationTimeMs")>0)?(std::stoi(commandlineArguments["separationTimeMs"])):(10);
 
@@ -59,6 +63,7 @@ int32_t main(int32_t argc, char **argv) {
         }
       }
     };
+
     auto nextEnvelope{[&surfer = acceleration, speedId1, speedId2, surfaceId](cluon::data::Envelope &&envelope)
       {
         if(envelope.senderStamp() == speedId1 || envelope.senderStamp() == speedId2 || envelope.senderStamp() == surfaceId){
@@ -69,7 +74,7 @@ int32_t main(int32_t argc, char **argv) {
 
     od4.dataTrigger(opendlv::logic::perception::GroundSurfaceArea::ID(),surfaceEnvelope);
     od4.dataTrigger(opendlv::logic::perception::GroundSurfaceProperty::ID(),nextEnvelope);
-    od4od4_WheelSpeed.dataTrigger(opendlv::proxy::GroundSpeedReading::ID(),nextEnvelope);
+    od4_WheelSpeed.dataTrigger(opendlv::proxy::GroundSpeedReading::ID(),nextEnvelope);
 
 
     // Just sleep as this microservice is data driven.

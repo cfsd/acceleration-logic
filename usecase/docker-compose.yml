@@ -2,11 +2,11 @@
 version: '2'
 
 services:
-    heart:
-        image: acceleration:latest
-        network_mode: "host"
-        command: "acceleration --cid=253 --cidWheelSpeed=219 --speedId1=1504 --speedId2=1505 \
-        --id=317 --verbose=1 --gatheringTimeMs=50 --separationTimeMs=10"
+    # acceleration:
+    #     image: chalmersfsd/acceleration:oscar-latest
+    #     network_mode: "host"
+    #     command: "cfsd18-cognition-acceleration --surfaceId=211 --cid=253\
+    #     --cidWheelSpeed=219 --speedId1=1504 --speedId2=1505 --id=317 --verbose=1 --gatheringTimeMs=50 --separationTimeMs=10 --Kp=0.0349 --Ki=0 --targetSpeed=10 --accLimit=6"
 
     vehicle-view:
         image: chrberger/opendlv-vehicle-view-amd64:20180720
@@ -25,10 +25,10 @@ services:
         - "8000:8000"
         command: "--cid=253"
 
-   recorder48:
+    recorder48:
         image: chrberger/cluon-amd64:latest
         network_mode: "host"
         volumes:
-        - ./recordings48cluon:/opt/recordings
+        - ~/recordings:/opt/recordings
         working_dir: "/opt/recordings"
-        command: sh -c "cluon-OD4toStdout --cid=48 > `date +CID-48-recording-%Y-%m-%d_%H%M%S.rec`"
+        command: sh -c "cluon-OD4toStdout --cid=253 > `date +CID-48-recording-%Y-%m-%d_%H%M%S.rec`"

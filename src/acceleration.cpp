@@ -22,8 +22,21 @@
 #include "acceleration.hpp"
 #include <chrono>
 
-Acceleration::Acceleration(cluon::OD4Session &od4) :
+Acceleration::Acceleration(cluon::OD4Session &od4, float Kp,  float Ki, float targetSpeed, float accelerationLimit) :
  m_od4(od4)
+ , m_steerError(0.0f)
+ , m_speedError(0.0f)
+ , m_Kp(Kp)
+ , m_Ki(Ki)
+ , m_lastSteerRequest()
+ , m_lastSpeedRead()
+ , m_groundSpeedReading()
+ , m_groundSpeedReadingLeft()
+ , m_groundSpeedReadingRight()
+ , m_speedMutex()
+ , m_od4Mutex()
+ , m_targetSpeed(targetSpeed)
+ , m_accelerationLimit(accelerationLimit)
 {
  setUp();
 }
@@ -35,7 +48,22 @@ Acceleration::~Acceleration()
 void Acceleration::nextContainer(cluon::data::Envelope &a_container)
 {
   if (a_container.dataType() == opendlv::logic::perception::GroundSurfaceProperty::ID() ) {
+    std::lock_guard<std::mutex> lockSpeed(m_speedMutex);
+    m_targetSpeed = 0.0f;
     Acceleration::stop();
+  }
+
+  if (a_container.dataType() == opendlv::proxy::GroundSpeedReading::ID()) {
+    std::lock_guard<std::mutex> lockSpeed(m_speedMutex);
+    auto vehicleSpeed = cluon::extractMessage<opendlv::proxy::GroundSpeedReading>(std::move(a_container));
+    if(a_container.senderStamp()==1504){
+      m_groundSpeedReadingLeft = vehicleSpeed.groundSpeed();
+    } else if (a_container.senderStamp()==1505){
+      m_groundSpeedReadingRight = vehicleSpeed.groundSpeed();
+    }
+    m_groundSpeedReading = (m_groundSpeedReadingLeft + m_groundSpeedReadingRight)*0.5f;
+
+    Acceleration::speedControl();
   }
 }
 
@@ -77,20 +105,35 @@ void Acceleration::leastSquare(Eigen::MatrixXf localPath, cluon::data::TimeStamp
   X.col(0) = Eigen::VectorXf::Ones(x.size());
   X.col(1) = x;
 
-  C = (X.transpose()*X)*(X.inverse().transpose())*y;
+  std::cout << "first" << std::endl;
+
+  std::cout << "X: \n" << X << std::endl;
+  std::cout << "y: \n" << y << std::endl;
+
+  C = ((X.transpose()*X).inverse())*X.transpose()*y;
+
+  std::cout << "second" << std::endl;
 
   Acceleration::closestPoint(C, sampleTime);
 
-  (void) sampleTime;
-  (void) X;
-  (void) x;
-  (void) y;
 }
 
 void Acceleration::closestPoint(Eigen::RowVectorXf C, cluon::data::TimeStamp sampleTime) {
 
   float d = static_cast<float>(C(0)/sqrt( pow(C(1),2) + 1) );
-  float steeringAngle = 0.0349f*d;
+
+  {
+    std::lock_guard<std::mutex> lockSpeed(m_speedMutex);
+    if (m_groundSpeedReading > 1) {
+      float dt = static_cast<float>( (cluon::time::toMicroseconds(cluon::time::now()) - cluon::time::toMicroseconds(m_lastSteerRequest))*1e-6 );
+      m_steerError += d*dt;
+    }
+  }
+
+  float steeringAngle = m_Kp*d + m_Ki*m_steerError;
+
+
+  m_lastSteerRequest = cluon::time::now();
 
   opendlv::logic::action::AimPoint aimPoint;
   aimPoint.azimuthAngle(steeringAngle);
@@ -98,15 +141,54 @@ void Acceleration::closestPoint(Eigen::RowVectorXf C, cluon::data::TimeStamp sam
   m_od4.send(aimPoint,sampleTime,317);
 }
 
-void Acceleration::stop() {
-  opendlv::proxy::SwitchStateReading message;
+void Acceleration::speedControl() {
+
+  m_speedMutex.lock();
+  float speedErr = m_targetSpeed - m_groundSpeedReading;
+  m_speedMutex.unlock();
+
+
+  if (speedErr > -3 && speedErr < 3) {
+    float dt = static_cast<float>( (cluon::time::toMicroseconds(cluon::time::now()) - cluon::time::toMicroseconds(m_lastSpeedRead))*1e-6 );
+    m_speedError += speedErr*dt;
+  }
+
+  float accelerationRequest = speedErr + m_speedError*0.01f;
+
+  accelerationRequest = std::min(std::max(accelerationRequest,-m_accelerationLimit),m_accelerationLimit);
   cluon::data::TimeStamp sampleTime = cluon::time::now();
-  message.state(1);
-  m_od4.send(message,sampleTime,1403);
+
+  if (accelerationRequest >= 0) {
+    opendlv::proxy::GroundAccelerationRequest message;
+    message.groundAcceleration(accelerationRequest);
+
+    std::lock_guard<std::mutex> lockOd4(m_od4Mutex);
+    m_od4.send(message,sampleTime,317);
+  } else {
+    opendlv::proxy::GroundDecelerationRequest message;
+    message.groundDeceleration(-accelerationRequest);
+
+    std::lock_guard<std::mutex> lockOd4(m_od4Mutex);
+    m_od4.send(message,sampleTime,317);
+  }
+}
+
+void Acceleration::stop() {
+  std::lock_guard<std::mutex> lockSpeed(m_speedMutex);
+  if (std::abs(m_groundSpeedReading) < 1){
+    opendlv::proxy::SwitchStateReading message;
+    cluon::data::TimeStamp sampleTime = cluon::time::now();
+    message.state(1);
+
+    std::lock_guard<std::mutex> lockOd4(m_od4Mutex);
+    m_od4.send(message,sampleTime,1403);
+  }
 }
 
 void Acceleration::setUp()
 {
+  m_lastSteerRequest = cluon::time::now();
+  m_lastSpeedRead = cluon::time::now();
 }
 
 void Acceleration::tearDown()

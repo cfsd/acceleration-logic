@@ -29,7 +29,7 @@
 
 class Acceleration {
  public:
-  Acceleration(cluon::OD4Session &od4);
+  Acceleration(cluon::OD4Session &, float, float, float, float);
   virtual ~Acceleration();
   void nextContainer(cluon::data::Envelope &);
   void receiveCombinedMessage(std::map<int,opendlv::logic::perception::GroundSurfaceArea>, cluon::data::TimeStamp);
@@ -40,9 +40,23 @@ class Acceleration {
   void leastSquare(Eigen::MatrixXf, cluon::data::TimeStamp);
   void closestPoint(Eigen::RowVectorXf, cluon::data::TimeStamp);
   void stop();
+  void speedControl();
 
  private:
    cluon::OD4Session &m_od4;
+   float m_steerError;
+   float m_speedError;
+   float m_Kp;
+   float m_Ki;
+   cluon::data::TimeStamp m_lastSteerRequest;
+   cluon::data::TimeStamp m_lastSpeedRead;
+   float m_groundSpeedReading;
+   float m_groundSpeedReadingLeft;
+   float m_groundSpeedReadingRight;
+   std::mutex m_speedMutex;
+   std::mutex m_od4Mutex;
+   float m_targetSpeed;
+   float m_accelerationLimit;
 
 };
 
