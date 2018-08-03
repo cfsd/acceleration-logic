@@ -2,11 +2,12 @@
 version: '2'
 
 services:
-    # acceleration:
-    #     image: chalmersfsd/acceleration:oscar-latest
-    #     network_mode: "host"
-    #     command: "cfsd18-cognition-acceleration --surfaceId=211 --cid=253\
-    #     --cidWheelSpeed=219 --speedId1=1504 --speedId2=1505 --id=317 --verbose=1 --gatheringTimeMs=50 --separationTimeMs=10 --Kp=0.0349 --Ki=0 --targetSpeed=10 --accLimit=6"
+    acceleration:
+        #image: chalmersfsd/acceleration:oscar-latest
+        image: acceleration:latest
+        network_mode: "host"
+        command: "cfsd18-cognition-acceleration --surfaceId=211 --cid=253 \
+        --cidWheelSpeed=219 --speedId1=1504 --speedId2=1505 --id=317 --verbose=1 --gatheringTimeMs=50 --separationTimeMs=10 --Kp=0.0349 --Ki=0 --targetSpeed=10 --accLimit=6"
 
     vehicle-view:
         image: chrberger/opendlv-vehicle-view-amd64:20180720
