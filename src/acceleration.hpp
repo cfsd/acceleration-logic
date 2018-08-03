@@ -29,77 +29,21 @@
 
 class Acceleration {
  public:
-  Acceleration(std::map<std::string, std::string> commandlineArguments, cluon::OD4Session &od4);
-  Acceleration(Acceleration const &) = delete;
-  Acceleration &operator=(Acceleration const &) = delete;
+  Acceleration(cluon::OD4Session &od4);
   virtual ~Acceleration();
-  void receiveCombinedMessage(std::map<int,opendlv::logic::perception::GroundSurfaceArea>, cluon::data::TimeStamp);
   void nextContainer(cluon::data::Envelope &);
+  void receiveCombinedMessage(std::map<int,opendlv::logic::perception::GroundSurfaceArea>, cluon::data::TimeStamp);
 
  private:
-  void setUp(std::map<std::string, std::string> commandlineArguments);
+  void setUp();
   void tearDown();
+  void leastSquare(Eigen::MatrixXf, cluon::data::TimeStamp);
+  void closestPoint(Eigen::RowVectorXf, cluon::data::TimeStamp);
+  void stop();
 
-  void run(Eigen::MatrixXf localPath, cluon::data::TimeStamp sampleTime);
-  Eigen::MatrixXf orderCones(Eigen::MatrixXf localPath);
-  void Cartesian2Spherical(float, float, float, opendlv::logic::sensation::Point &);
-  std::tuple<float, float> driverModelSteering(Eigen::MatrixXf, float);
-  float driverModelVelocity(float);
+ private:
+   cluon::OD4Session &m_od4;
 
-  /* commandlineArguments */
-  cluon::OD4Session &m_od4;
-  cluon::OD4Session m_od4BB{219};
-  uint32_t m_speedId1{1504};
-  uint32_t m_speedId2{0};
-  int m_senderStamp{221};
-  // steering
-  bool m_usePathMemory{};
-  bool m_useAimDistanceLapCounter{};
-  float m_staticTrustInLastPathPoint{0.5f};
-  bool m_useDynamicTrust{false};
-  float m_lowTrustLimDistance{10.0f};
-  float m_highTrustLimDistance{20.0f};
-  float m_lowTrustLim{0.0f};
-  float m_highTrustLim{1.0f};
-  float m_aimDistance{50.0f};
-  bool m_moveOrigin{true};
-  float m_steerRate{50.0f};
-  float m_prevReqRatio{0.0f};
-  // velocity control
-  float m_velocityLimit{20.0f};
-  float m_axLimitPositive{5.0f};
-  float m_axLimitNegative{-5.0f};
-  //....controller
-  float m_aKp{1.0f};
-  float m_aKd{0.0f};
-  float m_aKi{0.1f};
-  float m_bKp{1.0f};
-  float m_bKd{0.0f};
-  float m_bKi{0.1f};
-  // vehicle specific
-  float m_wheelAngleLimit{30.0f};
-  float m_frontToCog{0.765f};
-
-  /* Member variables */
-  float const m_PI = 3.14159265f;
-  float m_groundSpeed;
-  std::mutex m_groundSpeedMutex;
-  std::chrono::time_point<std::chrono::system_clock> m_tickDt;
-  std::chrono::time_point<std::chrono::system_clock> m_tockDt;
-  std::chrono::time_point<std::chrono::system_clock> m_steerTickDt;
-  std::chrono::time_point<std::chrono::system_clock> m_steerTockDt;
-  float m_ei;
-  float m_ePrev;
-  bool m_changeState;
-  float m_prevHeadingRequest;
-  bool m_accelerate;
-  bool m_STOP;
-  bool m_latestPathSet;
-  Eigen::MatrixXf m_latestPath;
-  float m_distanceTraveled;
-  float m_groundSpeedReadingLeft;
-  float m_groundSpeedReadingRight;
-  std::mutex m_sendMutex;
 };
 
 #endif
